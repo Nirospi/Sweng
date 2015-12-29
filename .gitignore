@@ -1,6 +1,6 @@
 # ignore everything
 
-.metadata
+.metadata/*
 
 # except:
 !.gitignore
