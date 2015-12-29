@@ -1,0 +1,7 @@
+package terminal;
+
+public interface IBackend_Communication 
+{
+
+	boolean abbortCheckIn(int Terminalnumber);
+}
