@@ -10,7 +10,6 @@ public class Terminal implements ITerminal_Communication
 	public boolean displayFlightInfo(int flight)
 	{
 		System.out.println(flight);
-		return true;
 	}
 
 	@Override

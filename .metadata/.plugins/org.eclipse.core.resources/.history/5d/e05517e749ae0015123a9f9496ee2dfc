@@ -1,6 +1,6 @@
 package terminal;
 
-public interface ITerminal_Communication 
+interface ITerminal_Communication 
 {
 	
 	boolean changeGuiMessage(int messageNR);
