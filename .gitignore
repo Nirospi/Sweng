@@ -1,0 +1,9 @@
+# ignore everything
+
+.metadata/*
+
+# except:
+!.gitignore
+!.java
+
+# even if in subdir
