@@ -13,7 +13,6 @@ import java.util.Date;
 
 public class FlightDB 
 {
-	private boolean valid;
 	private static String file_path = "flights.csv";
 	private String qr_code = "";
 	private boolean checked_in = false;
@@ -22,7 +21,7 @@ public class FlightDB
 	private int num_luggage;
 	private int weight_combined;
 	private String flight_info = "";
-	private Date date;
+	private Date date = null;
 	private int group_id; //if 0 then no group
 	
 	//This static function searches the database (CSV file) for a record which contains the qr code specified in the
@@ -56,7 +55,6 @@ public class FlightDB
 	// This constructor is private since it is meant to only be used by the find_record function 
 	private FlightDB(String[] values) 
 	{
-		valid = true;
 		qr_code = values[0];
 		checked_in = bool_from_string(values[1]);
 		first_name = values[2];
@@ -64,6 +62,7 @@ public class FlightDB
 		num_luggage = Integer.parseInt(values[4]);
 		weight_combined = Integer.parseInt(values[5]);
 		flight_info = values[6];
+		
 		
 		SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 		try 
@@ -75,7 +74,6 @@ public class FlightDB
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			System.out.println("Could not parse date");
-			valid = false;
 		}
 		
 		group_id = Integer.parseInt(values[8]);
@@ -89,7 +87,6 @@ public class FlightDB
 	public FlightDB(String qr, boolean chkin, String fname, String lname, int numlugg, 
 			int weightcomb, String finfo, String dat, int gid)
 	{
-		valid = true;
 		qr_code = qr;
 		checked_in = chkin;
 		first_name = fname;
@@ -101,47 +98,100 @@ public class FlightDB
 		group_id = gid;
 	}
 	
+	public String to_string()//returns a string which contains a comma separated text line
+	{
+		String retval = "";
+		
+		retval += qr_code + "," + String.valueOf(checked_in) + "," + first_name + "," + last_name +
+				"," + String.valueOf(num_luggage) + "," + String.valueOf(weight_combined) + "," +
+				  flight_info + "," + get_date_string() + "," + String.valueOf(group_id);
+		
+		return retval;
+	}
 	
 	public void append() throws IOException
-	{
-		
-		if(search_file(qr_code) == null) // if the qr_code is not already in the database
+	{	
+		if(is_valid())
 		{
-			if(valid)
+			if(search_file(qr_code) == null) // if the qr_code is not already in the database
 			{
-				String delimeter = ",";
 				FileWriter fwrite = new FileWriter(file_path,true);
-				fwrite.write(qr_code);
-				fwrite.write(delimeter);
-				fwrite.write(String.valueOf(checked_in));
-				fwrite.write(delimeter);
-				fwrite.write(first_name);
-				fwrite.write(delimeter);
-				fwrite.write(last_name);
-				fwrite.write(delimeter);
-				fwrite.write(String.valueOf(num_luggage));
-				fwrite.write(delimeter);
-				fwrite.write(String.valueOf(weight_combined));
-				fwrite.write(delimeter);
-				fwrite.write(flight_info);
-				fwrite.write(delimeter);
-				fwrite.write(get_date_string());
-				fwrite.write(String.valueOf(group_id));
+				fwrite.write(to_string());
 				fwrite.write("\n");
-				
 				fwrite.close();
-				
+			}
+			else
+			{
+				System.out.println("QR code already in database");
 			}
 		}
 		else
 		{
-			System.out.println("QR code already in database");
+			System.out.println("Cannot append. Validation failed");
 		}
 	}
 	
-	public void update()
+	public void update()//saves the 
 	{
+		if(is_valid())
+		{
+			String line = null;
+			String text = "";
+			BufferedReader br = null;
+			
+			try
+			{
+				br = new BufferedReader(new FileReader(file_path));
+				
+				while ((line = br.readLine()) != null)
+				{
+					if(line.contains(qr_code))
+					{
+						line = to_string();
+					}
+					
+					text += line + '\n';
+				}
+				
+				br.close();
+				
+				FileWriter fw = new FileWriter(file_path);
+				fw.write(text);
+				fw.close();
+			}
+			catch (FileNotFoundException e) 
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.out.println("File not found");
+			}
+			catch(IOException f)
+			{
+				f.printStackTrace();
+				System.out.println("IO error");
+			}
+		}
+		else
+		{
+			System.out.println("Cannot update. Validation failed");
+		}
+	}
+	
+	private boolean is_valid() //checks whether the record is ready to be stored in database
+	{
+		boolean retval = false;
 		
+		if(!qr_code.isEmpty())
+			if(!first_name.isEmpty())
+				if(!last_name.isEmpty())
+					if(num_luggage >= 0)
+						if(weight_combined >= 0)
+							if(!flight_info.isEmpty())
+								if(date != null)
+									if(group_id >= 0)
+										retval = true;
+		
+		return retval;
 	}
 	
 	private static String[] search_file(String qr) throws IOException
@@ -156,23 +206,25 @@ public class FlightDB
 		try 
 		{
 			br = new BufferedReader(new FileReader(file_path));
+			
+			while(match == false && (line = br.readLine()) != null)
+			{
+					values = line.split(seperator);
+					read_qr_code = values[0];
+					if(read_qr_code.equals(qr))
+						match = true;
+			}
+			
+			br.close();
+			
 		} 
 		catch (FileNotFoundException e) 
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.out.println("File not found");
 		}
 		
-		
-		while(match == false && (line = br.readLine()) != null)
-		{
-				values = line.split(seperator);
-				read_qr_code = values[0];
-				if(read_qr_code.equals(qr))
-					match = true;
-		}
-		
-		br.close();
 		
 		if(match == true)
 			return values;
@@ -186,11 +238,6 @@ public class FlightDB
 	}
 	
 	//==== getters ==================
-	
-	public boolean is_valid()
-	{
-		return valid;
-	}
 	
 	public boolean is_checked_in()
 	{
@@ -303,9 +350,9 @@ public class FlightDB
 			}
 			catch (ParseException ee) 
 			{
-				valid = false;
+				date = new Date(); //use current date
 				System.out.println("Invalid date string");
-				ee.printStackTrace();
+				//ee.printStackTrace();
 			}
 			
 		}
@@ -317,12 +364,10 @@ public class FlightDB
 	}
 	
 	
-	
-	
 	public static void main(String[] args) throws IOException// Test main
 	{
 		
-		FlightDB rec = FlightDB.find_record("9000sd0sg");
+		FlightDB rec = FlightDB.find_record("027HZT01a");
 		
 		if(rec != null)
 		{
@@ -338,7 +383,12 @@ public class FlightDB
 		else
 			System.out.println("No matches.");
 		
-		FlightDB newrec = new FlightDB("9000sd0sg",false, "Daniel", "Schmidt", 1, 10, "Irgendwohin", "12.01.2016",0);
+		rec.set_flight_info("info changed");
+		rec.update();
+		FlightDB newrec = new FlightDB("ccc000",false, "Daniel", "Schmidt", 1, 10, "Irgendwohin", "12.01.2016",0);
+		FlightDB somerec = new FlightDB();
 		newrec.append();
+		somerec.append();
 	}
+
 }
